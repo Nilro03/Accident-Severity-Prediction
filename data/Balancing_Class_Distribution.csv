@@ -1,0 +1,6 @@
+Severity,Original training set,After Random Undersampling,After SMOTENC
+1,394,394,8081
+2,38205,8081,8081
+3,8081,8081,8081
+4,1256,1256,8081
+Total,47936,17812,32324

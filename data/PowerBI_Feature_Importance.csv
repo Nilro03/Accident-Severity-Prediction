@@ -1,0 +1,166 @@
+Feature,Importance,Level
+State,0.15096141169966404,Attribute
+Month,0.09081850298823804,Attribute
+Weather_Condition,0.08598170545636331,Attribute
+Pressure(in),0.08437372868118811,Attribute
+Temperature(F),0.08264466003471119,Attribute
+Humidity(%),0.08227416133462921,Attribute
+Hour,0.08005499778175916,Attribute
+Day,0.07302135942227578,Attribute
+Day_of_Week,0.07148836982259427,Attribute
+Wind_Speed(mph),0.07051484909801453,Attribute
+Visibility(mi),0.023694286163501263,Attribute
+Traffic_Signal,0.016515205829160974,Attribute
+Peak_Hour,0.015200117734831516,Attribute
+Crossing,0.012550506856219508,Attribute
+Weekend,0.011515233350378283,Attribute
+Sunrise_Sunset,0.011153845139920373,Attribute
+Junction,0.008704513175924102,Attribute
+Astronomical_Twilight,0.007427740088401911,Attribute
+Civil_Twilight,0.006808638314938492,Attribute
+Nautical_Twilight,0.0062083079832221276,Attribute
+Stop,0.003429732566600603,Attribute
+Station,0.0026225071235112456,Attribute
+Amenity,0.00111784421266833,Attribute
+Railway,0.000917775141283668,Attribute
+Month,0.09081850298823804,Encoded feature
+Pressure(in),0.08437372868118811,Encoded feature
+Temperature(F),0.08264466003471119,Encoded feature
+Humidity(%),0.08227416133462921,Encoded feature
+Hour,0.08005499778175916,Encoded feature
+Day,0.07302135942227578,Encoded feature
+Day_of_Week,0.07148836982259427,Encoded feature
+Wind_Speed(mph),0.07051484909801453,Encoded feature
+Weather_Condition=Fair,0.026596555085350828,Encoded feature
+Visibility(mi),0.023694286163501263,Encoded feature
+Traffic_Signal,0.016515205829160974,Encoded feature
+Peak_Hour,0.015200117734831516,Encoded feature
+State=CA,0.012687917980475118,Encoded feature
+Crossing,0.012550506856219508,Encoded feature
+Weekend,0.011515233350378283,Encoded feature
+Weather_Condition=Clear,0.010973090997736435,Encoded feature
+State=AZ,0.01068448241988963,Encoded feature
+State=VA,0.008715121189218708,Encoded feature
+Junction,0.008704513175924102,Encoded feature
+State=FL,0.008354286429759003,Encoded feature
+Weather_Condition=Mostly Cloudy,0.007998624715253361,Encoded feature
+Weather_Condition=Cloudy,0.007768868775848443,Encoded feature
+State=SC,0.007531167142461618,Encoded feature
+State=TX,0.0071990076043608065,Encoded feature
+State=PA,0.007168301822566604,Encoded feature
+State=GA,0.007149401527238536,Encoded feature
+Weather_Condition=Overcast,0.006587100776240118,Encoded feature
+Weather_Condition=Partly Cloudy,0.006394465248010509,Encoded feature
+State=NC,0.006293321508315115,Encoded feature
+State=NY,0.00626017921215181,Encoded feature
+Sunrise_Sunset=Night,0.005631105576308188,Encoded feature
+Sunrise_Sunset=Day,0.005522739563612185,Encoded feature
+State=IL,0.005436537602875206,Encoded feature
+State=MD,0.004559535239457666,Encoded feature
+State=MI,0.004549865089420636,Encoded feature
+State=OH,0.004377999414390491,Encoded feature
+Weather_Condition=Light Rain,0.004331801295847154,Encoded feature
+Astronomical_Twilight=Night,0.0037223072353641494,Encoded feature
+Weather_Condition=Scattered Clouds,0.003710709498787588,Encoded feature
+Astronomical_Twilight=Day,0.0037054328530377618,Encoded feature
+State=MN,0.003642306555770186,Encoded feature
+State=OR,0.0035980423645745174,Encoded feature
+Civil_Twilight=Night,0.003582476012577199,Encoded feature
+Stop,0.003429732566600603,Encoded feature
+Nautical_Twilight=Night,0.0033225089373674493,Encoded feature
+State=CO,0.003254159808270675,Encoded feature
+Civil_Twilight=Day,0.0032261623023612926,Encoded feature
+State=UT,0.0031569353441702466,Encoded feature
+State=TN,0.0030496375054861963,Encoded feature
+State=NJ,0.0030077590950413568,Encoded feature
+State=LA,0.002935511137517967,Encoded feature
+Nautical_Twilight=Day,0.0028857990458546782,Encoded feature
+State=WA,0.0028230471274782853,Encoded feature
+Station,0.0026225071235112456,Encoded feature
+State=MO,0.002504542367533034,Encoded feature
+State=IN,0.0024131533636765528,Encoded feature
+State=WI,0.0022871612324453575,Encoded feature
+State=AL,0.00216172832294239,Encoded feature
+State=CT,0.0021157431861695223,Encoded feature
+State=MA,0.0017651632737776775,Encoded feature
+Weather_Condition=Light Snow,0.001532855783611246,Encoded feature
+State=AR,0.001422868428719321,Encoded feature
+Weather_Condition=Fog,0.0013640510801942085,Encoded feature
+Weather_Condition=Rain,0.001304512154517996,Encoded feature
+State=OK,0.0012479633965763455,Encoded feature
+State=KY,0.0011749746519394823,Encoded feature
+Amenity,0.00111784421266833,Encoded feature
+State=IA,0.001113084376994773,Encoded feature
+Weather_Condition=Haze,0.0009885431361814708,Encoded feature
+State=KS,0.0009531454506202605,Encoded feature
+Railway,0.000917775141283668,Encoded feature
+State=RI,0.0007009893885719663,Encoded feature
+State=DE,0.0006260674704480993,Encoded feature
+State=NE,0.0005912439641292682,Encoded feature
+State=MS,0.0005579805219078495,Encoded feature
+Weather_Condition=Heavy Rain,0.0005516112472646607,Encoded feature
+State=NV,0.0005470447861400363,Encoded feature
+State=NM,0.0004904126595572238,Encoded feature
+Weather_Condition=Light Drizzle,0.00048055758517775136,Encoded feature
+Weather_Condition=Thunder in the Vicinity,0.00047988991473731936,Encoded feature
+Weather_Condition=Fair / Windy,0.00045554613001421,Encoded feature
+Weather_Condition=Heavy T-Storm,0.000450770064586661,Encoded feature
+State=MT,0.0004238699209361379,Encoded feature
+State=DC,0.00039701546643467546,Encoded feature
+Weather_Condition=T-Storm,0.0003878060002966836,Encoded feature
+State=NH,0.0003336591476576828,Encoded feature
+Weather_Condition=Mostly Cloudy / Windy,0.0003274324341040247,Encoded feature
+Weather_Condition=Cloudy / Windy,0.00031378168659337835,Encoded feature
+Weather_Condition=Wintry Mix,0.0002874726510023489,Encoded feature
+Weather_Condition=Light Rain with Thunder,0.0002843492986989462,Encoded feature
+Weather_Condition=Thunder,0.0002732987085695277,Encoded feature
+State=WV,0.00027221457723341125,Encoded feature
+Weather_Condition=Light Rain / Windy,0.00020481203090792576,Encoded feature
+Weather_Condition=Drizzle,0.0001984537692116322,Encoded feature
+Weather_Condition=Smoke,0.00018810412731827634,Encoded feature
+Weather_Condition=Partly Cloudy / Windy,0.00016890440607394535,Encoded feature
+Weather_Condition=Thunderstorm,0.00016642897543754293,Encoded feature
+Weather_Condition=Snow,0.00015519976070481453,Encoded feature
+State=ID,0.000128232381820303,Encoded feature
+Weather_Condition=Light Thunderstorms and Rain,0.00012314209913710805,Encoded feature
+State=ME,0.00011326181977658261,Encoded feature
+Weather_Condition=Heavy Rain / Windy,9.345179084898981e-05,Encoded feature
+Weather_Condition=Light Snow / Windy,8.494419006981935e-05,Encoded feature
+State=VT,7.771416009325234e-05,Encoded feature
+Weather_Condition=Heavy Snow,7.578496888699318e-05,Encoded feature
+Weather_Condition=Heavy Thunderstorms and Rain,6.854110132245183e-05,Encoded feature
+Weather_Condition=Mist,6.477257971042243e-05,Encoded feature
+Weather_Condition=Light Freezing Fog,5.875364759529244e-05,Encoded feature
+Weather_Condition=N/A Precipitation,5.590944056937002e-05,Encoded feature
+State=ND,5.476759162646285e-05,Encoded feature
+State=WY,5.2886671045995926e-05,Encoded feature
+Weather_Condition=Shallow Fog,4.251063708414779e-05,Encoded feature
+Weather_Condition=Thunderstorms and Rain,3.629510184062896e-05,Encoded feature
+Weather_Condition=Light Freezing Rain,3.3859303661328574e-05,Encoded feature
+Weather_Condition=Light Freezing Drizzle,3.383876278429079e-05,Encoded feature
+Weather_Condition=Heavy T-Storm / Windy,3.340992696712127e-05,Encoded feature
+Weather_Condition=Patches of Fog,3.2095397303270636e-05,Encoded feature
+Weather_Condition=Rain / Windy,2.9729653987210526e-05,Encoded feature
+Weather_Condition=Showers in the Vicinity,2.0520342498846843e-05,Encoded feature
+Weather_Condition=Heavy Drizzle,2.0497304091921857e-05,Encoded feature
+Weather_Condition=Haze / Windy,1.5446834318215935e-05,Encoded feature
+Weather_Condition=Blowing Snow,1.5210606799884152e-05,Encoded feature
+Weather_Condition=Snow / Windy,1.3406312622375076e-05,Encoded feature
+Weather_Condition=T-Storm / Windy,1.1029484459784796e-05,Encoded feature
+Weather_Condition=Sand / Dust Whirlwinds / Windy,1.0591811119314127e-05,Encoded feature
+Weather_Condition=Rain Showers,9.684220250621571e-06,Encoded feature
+Weather_Condition=Fog / Windy,9.547623102635708e-06,Encoded feature
+Weather_Condition=Freezing Rain,7.676340437848407e-06,Encoded feature
+Weather_Condition=Light Sleet,6.977744756545444e-06,Encoded feature
+Weather_Condition=Light Drizzle / Windy,6.9653915217152985e-06,Encoded feature
+Weather_Condition=Blowing Snow / Windy,6.833628937745119e-06,Encoded feature
+Weather_Condition=Thunder / Windy,5.0262622791950375e-06,Encoded feature
+Weather_Condition=Heavy Snow / Windy,4.916610185223503e-06,Encoded feature
+Weather_Condition=Snow and Sleet / Windy,4.858957455927194e-06,Encoded feature
+Weather_Condition=Thunder and Hail / Windy,4.800716140870127e-06,Encoded feature
+Weather_Condition=Sleet,4.596249515506029e-06,Encoded feature
+Weather_Condition=Light Snow with Thunder,2.1775879375220365e-06,Encoded feature
+Weather_Condition=Drizzle and Fog,2.1640463418523864e-06,Encoded feature
+Weather_Condition=Blowing Dust,2.1388059236310245e-06,Encoded feature
+Weather_Condition=Snow and Thunder,2.0260754969198198e-06,Encoded feature
+Weather_Condition=Snow and Sleet,1.976560121754987e-06,Encoded feature

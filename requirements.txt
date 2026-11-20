@@ -1,0 +1,11 @@
+streamlit>=1.46
+pandas
+numpy
+plotly
+joblib
+statsmodels>=0.13
+# These three must match the versions used in your notebook, or the saved model may not load.
+# Run `pip freeze | findstr /i "scikit-learn imbalanced lightgbm"` in the notebook's environment and pin them here.
+scikit-learn
+imbalanced-learn
+lightgbm

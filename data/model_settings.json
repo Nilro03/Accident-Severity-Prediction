@@ -1,0 +1,85 @@
+{
+  "best_model": "LightGBM",
+  "sample_size": 60000,
+  "selected_features": [
+    "Temperature(F)",
+    "Humidity(%)",
+    "Pressure(in)",
+    "Visibility(mi)",
+    "Wind_Speed(mph)",
+    "Hour",
+    "Day",
+    "Month",
+    "Day_of_Week",
+    "Amenity",
+    "Crossing",
+    "Junction",
+    "Railway",
+    "Station",
+    "Stop",
+    "Traffic_Signal",
+    "Weekend",
+    "Peak_Hour",
+    "Weather_Condition",
+    "Sunrise_Sunset",
+    "Civil_Twilight",
+    "Nautical_Twilight",
+    "Astronomical_Twilight",
+    "State"
+  ],
+  "numeric": [
+    "Temperature(F)",
+    "Humidity(%)",
+    "Pressure(in)",
+    "Visibility(mi)",
+    "Wind_Speed(mph)",
+    "Hour",
+    "Day",
+    "Month",
+    "Day_of_Week"
+  ],
+  "binary": [
+    "Amenity",
+    "Crossing",
+    "Junction",
+    "Railway",
+    "Station",
+    "Stop",
+    "Traffic_Signal",
+    "Weekend",
+    "Peak_Hour"
+  ],
+  "categorical": [
+    "Weather_Condition",
+    "Sunrise_Sunset",
+    "Civil_Twilight",
+    "Nautical_Twilight",
+    "Astronomical_Twilight",
+    "State"
+  ],
+  "include_state": true,
+  "balance_level": {
+    "Random Forest": 0.75,
+    "SVM": 0.75,
+    "LightGBM": 0.75
+  },
+  "accuracy_floor": 0.62,
+  "best_parameters": {
+    "Random Forest": {
+      "model__max_depth": null,
+      "model__max_features": "sqrt",
+      "model__n_estimators": 300
+    },
+    "SVM": {
+      "model__C": 1,
+      "model__gamma": 0.1
+    },
+    "LightGBM": {
+      "model__learning_rate": 0.1,
+      "model__max_depth": 12,
+      "model__num_leaves": 31
+    }
+  },
+  "cv_folds": 10,
+  "random_state": 42
+}
