@@ -1,11 +1,9 @@
-streamlit>=1.46
+streamlit
 pandas
 numpy
 plotly
 joblib
-statsmodels>=0.13
-# These three must match the versions used in your notebook, or the saved model may not load.
-# Run `pip freeze | findstr /i "scikit-learn imbalanced lightgbm"` in the notebook's environment and pin them here.
-scikit-learn
-imbalanced-learn
-lightgbm
+statsmodels
+scikit-learn==1.7.2
+imbalanced-learn==0.14.0
+lightgbm==4.7.0
