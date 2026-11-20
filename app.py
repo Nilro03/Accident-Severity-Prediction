@@ -84,7 +84,7 @@ CSS = """
                         radial-gradient(900px 480px at -6% 4%, rgba(34,176,125,.09), transparent 60%);
        background-attachment:fixed;}
 [data-testid="stDecoration"],[data-testid="stAppDeployButton"],.stAppDeployButton,footer{display:none !important;}
-.block-container{padding-top:1.4rem;padding-bottom:3rem;max-width:1440px;}
+.block-container{padding-top:5.2rem;padding-bottom:3rem;max-width:1440px;}
 html{scroll-behavior:smooth;}
 h1,h2,h3,h4{letter-spacing:-.02em;}
 .muted{opacity:.72;}
@@ -186,28 +186,35 @@ button:active{transform:scale(.98);}
 [data-testid="stElementContainer"]:has(.glass) > * > * > *{flex:1 1 auto;display:flex;flex-direction:column;}
 [data-testid="stMetric"]{height:100%;}
 
-/* Transparent top navigation bar */
-[data-testid="stHeader"],
-[data-testid="stMainNav"],
-[data-testid="stTopNav"] {
-  background: transparent !important;
+/* Website-style top navigation bar: solid bar, logo left, links beside it, thin line underneath */
+[data-testid="stHeader"]{
+  border-bottom:1px solid var(--line);
+  box-shadow:0 2px 14px var(--shadow);
 }
+[data-testid="stToolbar"]{padding:0 .5rem;}
+[data-testid="stHeaderLogo"]{height:2rem;width:auto;}
+[data-testid="stTopNavLinkContainer"]{gap:2px;}
 
-/* Top navigation links */
-[data-testid="stTopNavLink"] {
-  background: transparent !important;
-  border-radius: 10px !important;
-  font-weight: 650 !important;
-  transition: background .18s ease !important;
+/* Top navigation links: quiet text links, accent underline on the current page */
+[data-testid="stTopNavLink"]{
+  background:transparent !important;
+  border-radius:8px !important;
+  font-size:.92rem !important;
+  font-weight:600 !important;
+  padding:.45rem .85rem !important;
+  opacity:.72;
+  transition:opacity .15s ease, background .15s ease !important;
 }
-
-[data-testid="stTopNavLink"]:hover {
-  background: rgba(46,155,214,.12) !important;
+[data-testid="stTopNavLink"]:hover{
+  opacity:1;
+  background:var(--tint) !important;
 }
-
-[data-testid="stTopNavLink"][aria-current="page"] {
-  background: transparent !important;
-  box-shadow: inset 0 -2px 0 var(--accent) !important;
+[data-testid="stTopNavLink"][aria-current="page"]{
+  opacity:1;
+  background:transparent !important;
+  color:var(--accent) !important;
+  box-shadow:inset 0 -2px 0 var(--accent) !important;
+  border-radius:0 !important;
 }
 
 [data-testid="stSidebarNavLink"][aria-current="page"] {
@@ -218,7 +225,7 @@ button:active{transform:scale(.98);}
 __ANIM__
 
 @media(max-width:760px){
- .block-container{padding-left:1rem;padding-right:1rem;padding-top:1rem;}
+ .block-container{padding-left:1rem;padding-right:1rem;padding-top:4.6rem;}
  .hero{padding:22px 20px;border-radius:18px;}
  .hero h1{font-size:1.65rem;}
  .hero p{font-size:.94rem;}
@@ -355,11 +362,29 @@ def keyed(key):
         return st.container()
 
 
+LOGO_SVG = (
+    "<svg xmlns='http://www.w3.org/2000/svg' width='190' height='40' viewBox='0 0 190 40'>"
+    "<defs><linearGradient id='g' x1='0' y1='0' x2='1' y2='1'>"
+    "<stop offset='0' stop-color='#2E9BD6'/><stop offset='1' stop-color='#22B07D'/></linearGradient></defs>"
+    "<rect x='2' y='2' width='36' height='36' rx='10' fill='url(#g)'/>"
+    "<rect x='13' y='8' width='14' height='24' rx='5' fill='#0F172A' fill-opacity='.85'/>"
+    "<circle cx='20' cy='14' r='3' fill='#EF4444'/><circle cx='20' cy='20' r='3' fill='#F59E0B'/>"
+    "<circle cx='20' cy='26' r='3' fill='#22B07D'/>"
+    "<text x='48' y='27' font-family='Inter,Segoe UI,Arial,sans-serif' font-size='20' font-weight='800' "
+    "fill='#7B8798'>Accident</text>"
+    "<text x='127' y='27' font-family='Inter,Segoe UI,Arial,sans-serif' font-size='20' font-weight='800' "
+    "fill='#2E9BD6'>IQ</text></svg>"
+)
+
+
 def brand_bar():
-    st.markdown('<div class="topbar"><div class="brand"><span class="logo">🚦</span>'
-                '<span>Accident<b>IQ</b></span></div>'
-                '<div class="tagline">Traffic accident severity prediction · AI on real accident data</div></div>',
-                unsafe_allow_html=True)
+    """Put the brand (logo + name) into the top navigation bar itself instead of a second bar in the page."""
+    from urllib.parse import quote
+    uri = "data:image/svg+xml;utf8," + quote(LOGO_SVG)
+    try:
+        st.logo(uri, icon_image=uri, size="large", link=None)
+    except Exception:  # very old Streamlit: no st.logo -> skip, the page still works
+        pass
 
 
 def glossary():
@@ -831,10 +856,30 @@ def need_files(names, what):
             + ". They are created by the notebook.", warn=True)
 
 
+def _patch_old_imputers(obj, _seen=None):
+    """A model saved with an older scikit-learn lacks SimpleImputer._fill_dtype, which newer versions need.
+    Re-create it from the fitted statistics so the old file still works. (Best fix: re-export the model
+    from the notebook with the same scikit-learn version that runs the dashboard.)"""
+    _seen = set() if _seen is None else _seen
+    if id(obj) in _seen:
+        return
+    _seen.add(id(obj))
+    if type(obj).__name__ == "SimpleImputer" and not hasattr(obj, "_fill_dtype") and hasattr(obj, "statistics_"):
+        obj._fill_dtype = obj.statistics_.dtype
+    kids = []
+    for attr in ("steps", "transformers_", "transformers"):
+        for item in getattr(obj, attr, None) or []:
+            kids.extend(x for x in (item[1:] if isinstance(item, tuple) else (item,)) if hasattr(x, "__dict__"))
+    kids.extend(v for v in getattr(obj, "__dict__", {}).values() if hasattr(v, "fit") or hasattr(v, "steps"))
+    for k in kids:
+        _patch_old_imputers(k, _seen)
+
+
 @st.cache_resource(show_spinner=False)
 def load_model(folder):
     import joblib
     pipe = joblib.load(Path(folder) / MODEL_FILE)
+    _patch_old_imputers(pipe)
     settings = json.loads((Path(folder) / SETTINGS_FILE).read_text())
     return pipe, settings
 
