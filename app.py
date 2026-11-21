@@ -7,9 +7,9 @@ Needs Streamlit >= 1.46 for the real top menu (older versions fall back to the s
 Folder layout:
     app.py
     requirements.txt              (see the file: streamlit, pandas, plotly, scikit-learn, lightgbm, imbalanced-learn,
-                                   joblib, statsmodels)
+                                   joblib)
     data/                         (CSV files exported by the notebook, plus best_model.joblib, model_settings.json
-                                   and Monthly_Accident_Counts.csv for the Predict and Forecast pages)
+                                   for the Predict and Future Scenario pages)
 
 THEME: there is ONE theme control - Streamlit's own  (top-right menu) > Settings > Theme.
 The dashboard follows it automatically and instantly: the page colours are written in CSS that
@@ -23,7 +23,7 @@ import json
 import time
 import warnings
 from contextlib import contextmanager
-from datetime import date
+from datetime import date, timedelta
 from pathlib import Path
 
 import numpy as np
@@ -241,7 +241,7 @@ __ANIM__
 def page_anim_css():
     out = []
     for key, kf in (("overview", "riseA"), ("explore", "riseB"), ("training", "riseC"), ("test", "riseD"),
-                    ("predict", "riseE"), ("forecast", "riseF")):
+                    ("predict", "riseE"), ("scenario", "riseF")):
         out.append(f"@keyframes {kf}{{from{{opacity:0;transform:translateY(22px)}}to{{opacity:1;transform:none}}}}")
         out.append(f".st-key-page_{key}>*{{animation:{kf} .6s cubic-bezier(.2,.75,.25,1) backwards}}")
         for i in range(2, 21):
@@ -265,7 +265,7 @@ LOADER = loader_html("Loading accident data…", "Reading the result files expor
 
 @contextmanager
 def loading(title, sub=""):
-    """Show the driving-car animation while a slow step (loading the model, fitting a forecast) runs."""
+    """Show the driving-car animation while a slow step (loading the model, scoring a scenario) runs."""
     box = st.empty()
     box.markdown(loader_html(title, sub), unsafe_allow_html=True)
     try:
@@ -489,7 +489,7 @@ def overview():
 
         section("Where to go")
         guide = [("🔮", "Predict Severity", "Describe a new accident and see what the model expects."),
-                 ("📈", "Accident Forecast", "How many accidents might be reported in a future year?"),
+                 ("📈", "Future Scenario", "What severity does the model expect on a future date and conditions?"),
                  ("🔎", "Risk Explorer", "Filter by state, weather and time to see how risk changes."),
                  ("🎯", "Test Results", "Technical: how well the model did on unseen accidents."),
                  ("🧠", "Model Training", "Technical: how the three models were built.")]
@@ -831,8 +831,8 @@ def results():
                    "to catch. The test set is 20% of the data and was never used in training.")
 
 
-# ================================================================= new pages: predict severity + accident forecast
-MODEL_FILE, SETTINGS_FILE, MONTHLY_FILE = "best_model.joblib", "model_settings.json", "Monthly_Accident_Counts.csv"
+# ================================================================= new pages: predict severity + future scenario
+MODEL_FILE, SETTINGS_FILE = "best_model.joblib", "model_settings.json"
 SEV_COLS = [f"Severity_{k}" for k in (1, 2, 3, 4)]
 
 ROAD_LABEL = {"Amenity": "Shop, cafe or other amenity nearby", "Crossing": "Pedestrian crossing", "Junction": "Junction",
@@ -989,187 +989,138 @@ def predictor():
                     f"Severity 4 is rare and the hardest to spot{r4_txt}.", warn=True)
         st.caption(f"Model: {model_name}")
 
-# ---------------------------------------------------------------- forecast
-@st.cache_data
-def load_monthly(folder):
-    m = pd.read_csv(Path(folder) / MONTHLY_FILE)
-    m["Date"] = pd.to_datetime(dict(year=m["Year"], month=m["Month"], day=1))
-    m = m.sort_values("Date").set_index("Date")[SEV_COLS]
-    m = m.reindex(pd.date_range(m.index.min(), m.index.max(), freq="MS")).fillna(0)   # any missing month = 0
-    m["Total"] = m[SEV_COLS].sum(axis=1)
-    return m[m["Total"].cumsum() > 0]                                                 # drop empty months at the start
+# ---------------------------------------------------------------- future scenario
+def scenario_frame(pipe, settings, cats, items, p):
+    """One input row per (date, hour) built exactly like the training data, so the saved model can score it."""
+    rows = []
+    for when, hour in items:
+        dow = when.weekday()
+        light = "Night" if (hour < 6 or hour >= 19) else "Day"
+        row = {"Temperature(F)": p["temp"], "Humidity(%)": p["hum"], "Pressure(in)": p["pres"],
+               "Visibility(mi)": p["vis"], "Wind_Speed(mph)": p["wind"], "Hour": hour, "Day": when.day,
+               "Month": when.month, "Day_of_Week": dow, "Weekend": int(dow >= 5),
+               "Peak_Hour": int(hour in RUSH_HOURS), "Weather_Condition": p["wx"], "State": p["state"], **p["road"]}
+        for col, val in zip(LIGHT_COLS, LIGHT_CHOICES["Day" if light == "Day" else "Night"]):
+            row[col] = match_label(val, cats.get(col, []))
+        rows.append(row)
+    cols = list(getattr(pipe.named_steps["encode"], "feature_names_in_", settings["selected_features"]))
+    df = pd.DataFrame(rows)
+    for c in cols:                      # attributes the model does not use are just placeholders
+        if c not in df.columns:
+            df[c] = 0
+    return df[cols]
 
 
-@st.cache_data(show_spinner=False)
-def hw_forecast(values, start, steps, reps=1000):
-    """Holt-Winters (damped trend, yearly seasonality) on log counts. Returns the point forecast and simulated paths."""
-    from statsmodels.tsa.exponential_smoothing.ets import ETSModel
-    y = pd.Series(np.log1p(np.asarray(values, dtype=float)), index=pd.date_range(start, periods=len(values), freq="MS"))
-    with warnings.catch_warnings():
-        warnings.simplefilter("ignore")
-        res = ETSModel(y, error="add", trend="add", damped_trend=True, seasonal="add", seasonal_periods=12).fit(disp=False)
-        point = np.expm1(res.forecast(steps).to_numpy())
-        seed = ({"rng": np.random.default_rng(42)} if "rng" in inspect.signature(res.simulate).parameters
-                else {"random_state": 42})              # the argument name differs between statsmodels versions
-        sims = np.expm1(np.asarray(res.simulate(steps, anchor="end", repetitions=reps, **seed)))
-    return {"index": pd.date_range(y.index[-1] + pd.offsets.MonthBegin(1), periods=steps, freq="MS"),
-            "point": np.clip(point, 0, None), "sims": np.clip(sims, 0, None)}
-
-
-def band(fc):
-    return np.percentile(fc["sims"], 10, axis=1), np.percentile(fc["sims"], 90, axis=1)
-
-
-def forecast_figure(hist, fc, title, naive=None, actual=None):
-    lo, hi = band(fc)
+def scenario_figure(x, y, base, title, xtitle, xticks=None):
     fig = go.Figure()
-    fig.add_trace(go.Scatter(x=hist.index, y=hist.values, mode="lines", name="Reported", line=dict(color=ACCENT, width=2.5)))
-    fig.add_trace(go.Scatter(x=fc["index"], y=hi, mode="lines", line=dict(width=0), showlegend=False, hoverinfo="skip"))
-    fig.add_trace(go.Scatter(x=fc["index"], y=lo, mode="lines", line=dict(width=0), fill="tonexty",
-                             fillcolor="rgba(245,158,11,.25)", name="Likely range (8 in 10)"))
-    x0 = [hist.index[-1]] if actual is None else []
-    y0 = [hist.iloc[-1]] if actual is None else []
-    fig.add_trace(go.Scatter(x=x0 + list(fc["index"]), y=y0 + list(fc["point"]), mode="lines", name="Forecast",
-                             line=dict(color=ORANGE, width=2.5, dash="dash")))
-    if naive is not None:
-        fig.add_trace(go.Scatter(x=fc["index"], y=naive, mode="lines", name="Same month last year",
-                                 line=dict(color=GREY, width=2, dash="dot")))
-    if actual is not None:
-        fig.add_trace(go.Scatter(x=actual.index, y=actual.values, mode="lines+markers", name="Reported (hidden from the model)",
-                                 line=dict(color=ACCENT, width=2.5)))
+    fig.add_trace(go.Scatter(x=x, y=y, mode="lines+markers", name="Severity 3-4 score",
+                             line=dict(color=SEV_COLOR[SEV_LABEL[3]], width=3), marker=dict(size=7),
+                             hovertemplate="%{x}: %{y:.0%}<extra></extra>"))
+    fig.add_hline(y=base, line_dash="dash", line_color="#8892a6",
+                  annotation_text=f"Usual share in the data ({base:.0%})", annotation_position="bottom right")
+    fig.update_yaxes(tickformat=".0%", title="Leaning to Severity 3-4", rangemode="tozero")
+    fig.update_xaxes(title=xtitle, **({"tickmode": "array", "tickvals": xticks[0], "ticktext": xticks[1]} if xticks else {}))
     fig.update_layout(title=title)
-    fig.update_yaxes(title="Accidents per month", rangemode="tozero")
-    return style(fig, 400)
+    return style(fig, 360)
 
 
-def forecaster():
-    with keyed("page_forecast"):
-        hero("FORECAST", "How many accidents might be reported next year?",
-             "A forecasting model studies the monthly pattern of the whole dataset (millions of records) and carries it "
-             "forward. It is a separate model from the severity predictor.")
+def scenario():
+    with keyed("page_scenario"):
+        hero("WHAT-IF", "Future scenario: how severe could an accident be?",
+             "Choose a future date and the conditions you expect. The best model (LightGBM) scores the severity "
+             "for every hour of that day and for every month of the year.")
+        sev_legend()
 
-        gone = missing_files([MONTHLY_FILE])
+        gone = missing_files([MODEL_FILE, SETTINGS_FILE])
         if gone:
             need_files(gone, "This page")
             return
         try:
-            import statsmodels  # noqa: F401
-        except ImportError:
-            st.error("This page needs the 'statsmodels' package. Run:  pip install statsmodels")
+            with loading("Loading the trained model…", "Waking up the prediction engine"):
+                pipe, settings = load_model(folder)
+                cats = model_categories(pipe, settings)
+        except Exception as e:
+            st.error("The saved model could not be loaded. Check that scikit-learn, imbalanced-learn and lightgbm "
+                     "have the same versions as in the notebook. "
+                     f"Details: {type(e).__name__}: {e}")
             return
 
-        m = load_monthly(folder)
-        last = m.index.max()
-        if len(m) < 36:
-            st.warning("The monthly file has fewer than 36 months, which is too short for a seasonal forecast.")
-            return
+        model_name = settings.get("best_model", best_model)
+        states = sorted(cats.get("State", []))
+        wx_freq = acc["Weather_Condition"].value_counts()
+        wx_opts = sorted(cats.get("Weather_Condition", []), key=lambda w: (-wx_freq.get(w, 0), w))
+        top_state = acc["State"].value_counts().idxmax()
 
-        callout(f"<b>Read with care:</b> the data ends in <b>{last:%B %Y}</b>, so later years are forecasts that cannot be "
-                "checked yet. Counts are accidents <i>reported in this dataset</i> (more sources over time), not the true national total.",
-                warn=True)
+        callout("<b>Read with care:</b> the future weather is not known, so the conditions below are your own "
+                "<b>what-if assumptions</b>, not a weather forecast. The scores are not real-world chances (the model "
+                "learned from re-balanced data), and on newer data the model was less reliable "
+                "(macro F1 fell from 0.375 to 0.269 in the time-based check).", warn=True)
 
-        # ---- controls
-        first_year = last.year if last.month < 12 else last.year + 1
-        c1, c2 = st.columns(2)
-        year = c1.selectbox("Which year?", list(range(first_year, last.year + 4)))
-        mode = c2.radio("Split by severity using the mix of", ["Latest 12 months", "Latest 3 years", "All years"], horizontal=True,
-                        help="The forecast total is shared between severity levels using the share each level had in this period.")
-        n_mix = {"Latest 12 months": 12, "Latest 3 years": 36, "All years": len(m)}[mode]
+        left, right = st.columns([2, 3], gap="large")
+        with left:
+            st.markdown("#### 1. Set the scenario")
+            state = st.selectbox("State", states, index=states.index(top_state) if top_state in states else 0, key="sc_state")
+            when = st.date_input("Future date", value=date.today() + timedelta(days=365), min_value=date.today(),
+                                 key="sc_date", help="Pick any date from today onwards.")
+            hour = st.slider("Hour used for the year view", 0, 23, 17, key="sc_hour", help="0 = midnight, 17 = 5 pm")
+            wx = st.selectbox("Expected weather", wx_opts, index=wx_opts.index("Clear") if "Clear" in wx_opts else 0, key="sc_wx")
+            c1, c2 = st.columns(2)
+            temp = c1.number_input("Temperature (°F)", -40.0, 130.0, 62.0, step=1.0, key="sc_t")
+            hum = c2.number_input("Humidity (%)", 0.0, 100.0, 65.0, step=1.0, key="sc_h")
+            vis = c1.number_input("Visibility (miles)", 0.0, 100.0, 10.0, step=0.5, key="sc_v")
+            wind = c2.number_input("Wind speed (mph)", 0.0, 150.0, 7.0, step=1.0, key="sc_w")
+            pres = st.number_input("Pressure (inches)", 20.0, 32.5, 29.9, step=0.1, key="sc_p")
+            with st.expander("Road features at the location (optional)"):
+                road_feats = [b for b in settings["binary"] if b not in ("Weekend", "Peak_Hour")]
+                road = {b: int(st.checkbox(ROAD_LABEL.get(b, b), key=f"sc_road_{b}")) for b in road_feats}
+            st.caption("Light is set automatically: night from 19:00 to 05:59, day otherwise.")
 
-        steps = (year - last.year) * 12 + (12 - last.month)
-        with loading("Fitting the forecast model…", "Learning the monthly pattern"):
-            fc = hw_forecast(tuple(m["Total"].astype(float)), str(m.index[0].date()), steps)
+        p = dict(state=state, wx=wx, temp=temp, hum=hum, vis=vis, wind=wind, pres=pres, road=road)
+        classes = [int(c) for c in pipe.named_steps["model"].classes_]
+        hi_idx = [i for i, c in enumerate(classes) if c >= 3]
+        base = acc["Severity"].value_counts(normalize=True).reindex(classes).fillna(0)
+        base34 = float(base[[c for c in classes if c >= 3]].sum())
 
-        # ---- the year's total = months already reported + simulated months
-        in_year = fc["index"].year == year
-        have = m[m.index.year == year]
-        rem = fc["sims"][in_year].sum(axis=0)                     # simulated total of the months still to come
-        r10, r50, r90 = np.percentile(rem, [10, 50, 90])
-        a_tot = float(have["Total"].sum())
-        t10, t50, t90 = a_tot + r10, a_tot + r50, a_tot + r90
+        # ---- across the 24 hours of the chosen date
+        day_proba = pipe.predict_proba(scenario_frame(pipe, settings, cats, [(when, h) for h in range(24)], p))
+        day_hi = day_proba[:, hi_idx].sum(axis=1)
+        day_top = [classes[int(r.argmax())] for r in day_proba]
+        peak = int(np.argmax(day_hi))
+        avg = day_proba.mean(axis=0)
+        main = classes[int(avg.argmax())]
 
-        k1, k2, k3 = st.columns(3)
-        k1.metric(f"Expected in {year}", f"{t50:,.0f}",
-                  help="Middle estimate. " + (f"Includes {len(have)} month(s) already reported in the data." if len(have) else ""))
-        k2.metric("Likely range (8 in 10)", f"{t10:,.0f} – {t90:,.0f}",
-                  help="If the pattern continues, the real number should land inside this range about 8 times out of 10.")
-        prev = m[m.index.year == year - 1]["Total"]
-        if len(prev) == 12:
-            k3.metric(f"Change vs {year - 1}", f"{(t50 / prev.sum() - 1) * 100:+.1f}%", help=f"{year - 1} reported: {prev.sum():,.0f}")
-        else:
-            k3.metric("Months forecast", f"{int(in_year.sum())} of 12")
+        # ---- across the 12 months (15th of each month, at the chosen hour)
+        month_dates = [date(when.year, m, 15) for m in range(1, 13)]
+        yr_proba = pipe.predict_proba(scenario_frame(pipe, settings, cats, [(d, hour) for d in month_dates], p))
+        yr_hi = yr_proba[:, hi_idx].sum(axis=1)
+        mnames = [d.strftime("%b") for d in month_dates]
 
-        show(forecast_figure(m["Total"], fc, f"Accidents reported per month, with the forecast to {year}"))
+        with right:
+            st.markdown(f"#### 2. What the model expects on {when:%d %B %Y}")
+            a, b, c = st.columns(3)
+            insight(a, "Most likely level", SEV_LABEL[main], f"{SEV_PLAIN[main].capitalize()} · average over the day")
+            insight(b, "Leaning to Severity 3–4", pct(float(day_hi.mean())),
+                    f"{'Above' if day_hi.mean() > base34 else 'Below'} the usual {pct(base34)}")
+            insight(c, "Highest-risk hour", f"{peak:02d}:00", f"Severity 3–4 score {pct(float(day_hi[peak]))}")
+            show(scenario_figure(list(range(24)), day_hi, base34, f"Across the day: {when:%d %B %Y}", "Hour of day (0 = midnight)",
+                                 xticks=(list(range(0, 24, 3)), [f"{h:02d}" for h in range(0, 24, 3)])))
+            show(scenario_figure(mnames, yr_hi, base34, f"Across the year {when.year} (15th of each month, {hour:02d}:00)", "Month"))
 
-        # ---- split by severity
-        tail = m.tail(n_mix)[SEV_COLS].sum()
-        share = tail / tail.sum()
-        rows = []
-        for k, col in zip((1, 2, 3, 4), SEV_COLS):
-            seen = float(have[col].sum())
-            rows.append({"Severity": f"{SEV_LABEL[k]} ({SEV_PLAIN[k]})", "Share": f"{share[col]:.1%}",
-                         "Expected": f"{seen + share[col] * r50:,.0f}",
-                         "Likely range": f"{seen + share[col] * r10:,.0f} – {seen + share[col] * r90:,.0f}"})
-        sev_tbl = pd.DataFrame(rows).set_index("Severity")
-
-        st.markdown(f"### {year} by severity level")
-        html_table(sev_tbl)
-        st.caption(f"Each level gets its share of the forecast total ({mode.lower()}); the mix is assumed to stay the same.")
-
-        # ---- evidence: can we trust it?
-        section("Can we trust the forecast?",
-                "Test: hide one year from the model, forecast it, then compare with what was really reported.")
-        years = sorted(set(m.index.year))
-        ok_years = [y for y in years if (m.index.year == y).sum() == 12 and (m.index < f"{y}-01-01").sum() >= 36]
-        if not ok_years:
-            st.info("Not enough complete years to run this test.")
-        else:
-            by = st.selectbox("Year to hide and forecast", ok_years, index=len(ok_years) - 1)
-            train, test = m[m.index < f"{by}-01-01"]["Total"], m[m.index.year == by]["Total"]
-            with loading("Running the test…", f"Forecasting {by} from the years before it"):
-                bt = hw_forecast(tuple(train.astype(float)), str(train.index[0].date()), len(test))
-            naive = train.iloc[-12:].to_numpy()                   # same month, one year earlier
-            lo, hi = band(bt)
-            act = test.to_numpy()
-
-            def scores(f):
-                return {"Typical monthly miss": float(np.mean(np.abs(act - f) / act) * 100),
-                        "Typical miss (accidents)": float(np.sqrt(np.mean((act - f) ** 2))),
-                        "Miss on the year's total": float((f.sum() / act.sum() - 1) * 100)}
-            tbl = pd.DataFrame({"Holt-Winters forecast": scores(bt["point"]), "Same month last year": scores(naive)}).T
-            tbl.index.name = "Method"
-            hw, nv = tbl.loc["Holt-Winters forecast"], tbl.loc["Same month last year"]
-            cover = float(np.mean((act >= lo) & (act <= hi)))
-            tot_key = "Miss on the year's total"
-            better = hw["Typical monthly miss"] < nv["Typical monthly miss"]
-
-            callout(f"<b>In plain words:</b> pretending {by} had not happened, the forecast was off by about "
-                    f"<b>{hw['Typical monthly miss']:.0f}%</b> in a typical month, and its total for the year was "
-                    f"<b>{abs(hw[tot_key]):.1f}% too "
-                    f"{'high' if hw[tot_key] > 0 else 'low'}</b>, and {cover:.0%} of the months landed inside the likely range. "
-                    + (f"That beats simply repeating the same month from the year before ({nv['Typical monthly miss']:.0f}% off)."
-                       if better else
-                       f"That is <u>not</u> better than simply repeating the same month from the year before "
-                       f"({nv['Typical monthly miss']:.0f}% off), so treat this forecast with extra caution."),
-                    warn=not better)
-
-            show(forecast_figure(train, bt, f"The test on {by}: forecast made from the earlier years vs what was reported",
-                                 naive=naive, actual=test))
-            html_table(tbl, {"Typical monthly miss": "{:.1f}%", "Typical miss (accidents)": "{:,.0f}",
-                             "Miss on the year's total": "{:+.1f}%"})
-            st.caption("“Typical miss (accidents)” is RMSE, in accidents per month. “Same month last year” is a simple "
-                       "benchmark: the forecast is only useful if it does better.")
-
-        with st.expander("ℹ️ How this forecast is made"):
+        with st.expander("Hour-by-hour scores"):
+            tbl = pd.DataFrame(day_proba, columns=[f"Severity {c}" for c in classes])
+            tbl.insert(0, "Hour", [f"{h:02d}:00" for h in range(24)])
+            tbl["Most likely"] = [f"Severity {c}" for c in day_top]
+            tbl["Severity 3–4"] = day_hi
+            html_table(tbl.set_index("Hour"), fmt={**{f"Severity {c}": "{:.0%}" for c in classes}, "Severity 3–4": "{:.0%}"})
+        with st.expander("ℹ️ How this page works"):
             st.markdown(
-                "- **Data:** monthly counts from the **full** accident dataset (not the 60,000-record sample), "
-                "after removing duplicate reports.\n"
-                "- **Model:** Holt-Winters exponential smoothing with a damped trend and yearly seasonality, fitted on "
-                "log counts so forecasts stay positive.\n"
-                "- **Likely range:** 1,000 simulated futures from the fitted model; the range runs from the 10th to the 90th percentile.\n"
-                "- **Severity split:** the forecast total times the chosen historical share of each severity level.\n"
-                "- **Limits:** reporting coverage changed over time, so past growth may not continue, and the further ahead "
-                "you look, the wider the real uncertainty.")
+                f"- **Model:** {model_name}, the same trained model as the Predict Severity page.\n"
+                "- **Input:** the date sets the month, day and weekday; the hour and your assumed weather, state and road "
+                "features are fed to the model exactly like a real accident record.\n"
+                "- **Output:** the model's score for each severity level. The chart shows the combined score for "
+                "Severity 3–4 against how common they are in the data (dashed line).\n"
+                "- **Limit:** it does not forecast how many accidents will happen and it does not know the future weather.")
+        st.caption(f"Model: {model_name}")
 
 
 # ================================================================= navigation (real top menu)
@@ -1180,7 +1131,7 @@ PAGES = [
     st.Page(training, title="Model Training", icon="🧠", url_path="training"),
     st.Page(results, title="Test Results", icon="🎯", url_path="results"),
     st.Page(predictor, title="Predict Severity", icon="🔮", url_path="predict"),
-    st.Page(forecaster, title="Accident Forecast", icon="📈", url_path="forecast"),
+    st.Page(scenario, title="Future Scenario", icon="📈", url_path="scenario"),
 ]
 try:
     nav = st.navigation(PAGES, position="top")
@@ -1190,5 +1141,5 @@ nav.run()
 
 st.markdown("---")
 st.caption("Data: US Accidents (Kaggle), random sample · Severity = traffic-disruption class (1–4), not injury level · "
-           "3 machine-learning models compared, Holt-Winters for the forecast · Python, scikit-learn, LightGBM, statsmodels, Streamlit")
+           "3 machine-learning models compared · Python, scikit-learn, LightGBM, Streamlit")
 data_settings()
